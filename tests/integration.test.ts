@@ -1,5 +1,10 @@
-const request = require('supertest');
-const app = require('../src/app');
+import request from 'supertest';
+import app from '../src/app';
+import pool from '../src/config/db';
+
+afterAll(async () => {
+  await pool.end();
+});
 
 test('Create user and task', async () => {
   const user = await request(app)
