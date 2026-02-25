@@ -1,0 +1,69 @@
+name: CI with Terraform RDS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::924920722186:role/role1
+        aws-region: us-east-1
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      run: |
+        cd terraform
+        terraform init
+
+    - name: Terraform Apply
+      run: |
+        cd terraform
+        terraform apply -auto-approve
+
+    - name: Wait for RDS readiness
+      run: |
+        sleep 60
+
+    - name: Export DB Endpoint
+      run: |
+        cd terraform
+        ENDPOINT=$(terraform output -raw db_endpoint)
+        echo "DB_HOST=$ENDPOINT" >> $GITHUB_ENV
+        echo "DB_USER=ciuser" >> $GITHUB_ENV
+        echo "DB_PASSWORD=TempPassword123" >> $GITHUB_ENV
+        echo "DB_NAME=ci_db" >> $GITHUB_ENV
+        echo "DB_PORT=5432" >> $GITHUB_ENV
+        echo "PORT=3000" >> $GITHUB_ENV
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run Integration Tests
+      run: npm test
+
+    - name: Terraform Destroy
+      if: always()
+      run: |
+        cd terraform
+        terraform destroy -auto-approve
