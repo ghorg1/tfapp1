@@ -1,11 +1,24 @@
 import * as userModel from '../models/userModel';
-import { User } from '../models/userModel';
+import { JwtPayload, UserRole } from '../types';
 
-export async function createUser(name: string): Promise<User> {
-  if (!name) throw new Error('Name required');
-  return userModel.createUser(name);
+export async function getUsers() {
+  return userModel.getAllUsers();
 }
 
-export async function getUsers(): Promise<User[]> {
-  return userModel.getAllUsers();
+export async function deactivateUser(id: number, user: JwtPayload) {
+  if (user.role !== UserRole.ADMIN) {
+    throw new Error('Access denied');
+  }
+  const updated = await userModel.setActive(id, false);
+  if (!updated) throw new Error('User not found');
+  return updated;
+}
+
+export async function activateUser(id: number, user: JwtPayload) {
+  if (user.role !== UserRole.ADMIN) {
+    throw new Error('Access denied');
+  }
+  const updated = await userModel.setActive(id, true);
+  if (!updated) throw new Error('User not found');
+  return updated;
 }
